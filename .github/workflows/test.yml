@@ -16,3 +16,6 @@ jobs:
       - run: python scripts/validate_model_artifact.py
       - run: node --check web/app.js
       - run: node tests/web_smoke.js
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/browser_integration.mjs
