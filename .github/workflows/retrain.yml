@@ -1,0 +1,26 @@
+name: guarded-retrain
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 0'
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    permissions: {contents: write, pull-requests: write}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: test $(find dataset/unknown -type f 2>/dev/null | wc -l) -ge 10
+      - run: python train.py
+      - run: python evaluate.py
+      - run: python scripts/export_web_config.py
+      - run: python scripts/generate_model_card.py
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: Guarded AURA model refresh
+          title: Guarded AURA model refresh
+          body: Automated candidate; human review required before merge.
+          branch: automation/aura-retrain
+          delete-branch: true

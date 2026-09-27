@@ -37,6 +37,9 @@ training:
   batch_size: 32
   patience: 40
   seed: 42
+  class_balance: balanced
+  calibration_temperature: true
+  unknown_min_samples: 10
 voice:
   enabled: true
   cooldown_seconds: 4

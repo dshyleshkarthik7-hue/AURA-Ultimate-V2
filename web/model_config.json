@@ -1,0 +1,9 @@
+{
+  "image_size": 128,
+  "roi": {"mode": "center", "width_ratio": 0.82, "height_ratio": 0.82},
+  "labels": ["steel_glass", "steel_water_bottle", "bottle_gourd"],
+  "confidence_threshold": 0.72,
+  "margin_threshold": 0.12,
+  "feature_length": 329,
+  "model_version": 4
+}

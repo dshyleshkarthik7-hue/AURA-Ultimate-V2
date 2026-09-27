@@ -1,7 +1,9 @@
-__pycache__/
-*.py[cod]
 .venv/
-venv/
-logs/
-models/*.tmp
-# Dataset is intentionally included in this deployment bundle.
+__pycache__/
+*.pyc
+feature_failures.log
+evaluation.json
+splits.json
+runs/
+models/registry/
+models/candidate.npz
