@@ -143,6 +143,11 @@ def get_text(key, language="en"):
 def get_object_name(label, language="en"):
     return get_text(label, language)
 
+
+def object_name(label, language="en"):
+    return get_object_name(label, language)
+
+
 def get_voice_phrase(label, language="en"):
     if language not in VOICE_PHRASES:
         language = "en"
