@@ -1,14 +1,14 @@
 name: test
-on: [push, pull_request]
+on: [push,pull_request]
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: {python-version: '3.12'}
-      - run: pip install -r requirements.txt
-      - run: python -m unittest discover -s tests -p 'test*.py' -v
-      - run: python -m compileall -q aura app.py train.py evaluate.py auto_cycle.py scripts
-      - run: python scripts/validate_web_contract.py
-      - run: python -c "import csv; from pathlib import Path; r=Path('dataset'); assert all(len(list((r/x['label']).glob('*.jpg')))==int(x['original_files']) for x in csv.DictReader((r/'MANIFEST.csv').open()))"
+ test:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-python@v5
+     with: {python-version: '3.12'}
+   - run: pip install -r requirements.txt
+   - run: python -m unittest discover -s tests -p 'test*.py' -v
+   - run: python -m compileall -q aura app.py train.py evaluate.py auto_cycle.py scripts
+   - run: python scripts/validate_web_contract.py
+   - run: python scripts/validate_model_artifact.py
