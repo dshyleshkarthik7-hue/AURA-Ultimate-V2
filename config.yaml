@@ -1,0 +1,42 @@
+camera:
+  source: 0
+  width: 1280
+  height: 720
+  fps: 30
+labels:
+  - steel_glass
+  - steel_water_bottle
+  - bottle_gourd
+dataset:
+  root: dataset
+model:
+  path: models/aura_classifier.npz
+  image_size: 128
+  confidence_threshold: 0.72
+  margin_threshold: 0.12
+quality:
+  min_sharpness: 35.0
+  min_brightness: 25.0
+  max_brightness: 235.0
+  max_clipped_fraction: 0.25
+roi:
+  mode: center
+  width_ratio: 0.82
+  height_ratio: 0.82
+stability:
+  window: 10
+  min_votes: 7
+  min_mean_confidence: 0.75
+training:
+  min_images_per_class: 50
+  validation_fraction: 0.15
+  test_fraction: 0.15
+  epochs: 500
+  learning_rate: 0.05
+  l2: 0.0005
+  batch_size: 32
+  patience: 40
+  seed: 42
+voice:
+  enabled: true
+  cooldown_seconds: 4

@@ -1,0 +1,10 @@
+[build-system]
+requires=["setuptools>=69"]
+build-backend="setuptools.build_meta"
+[project]
+name="aura-perception"
+version="2.0.0"
+requires-python=">=3.10,<3.14"
+dependencies=["numpy==2.2.4","opencv-python==4.11.0.86","PyYAML==6.0.2","pyttsx3==2.98"]
+[tool.setuptools]
+packages=["aura"]
