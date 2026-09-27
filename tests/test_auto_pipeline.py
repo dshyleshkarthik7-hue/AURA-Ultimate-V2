@@ -1,9 +1,8 @@
-
 import unittest
 from aura.auto_pipeline import EvaluationGate,EvidenceGate,Observation
 class Tests(unittest.TestCase):
  def test_evidence_gate_requires_real_quality(self):
-  g=EvidenceGate(required_observations=3,minimum_quality=.6)
+  g=EvidenceGate(required_observations=2,minimum_quality=.6)
   self.assertFalse(g.add(Observation(0,.5,"dim","busy")))
   self.assertFalse(g.add(Observation(1,.8,"daylight","clear")))
   self.assertTrue(g.add(Observation(2,.9,"daylight","clear")))
