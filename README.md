@@ -11,7 +11,7 @@ English, Hindi, Telugu, Tamil, Gujarati.
 ## Architecture
 The Python perception stack runs locally with NumPy/OpenCV and a from-scratch classifier. The browser consumes the same NPZ model artifact encoded as base64 and the same OpenCV v1 329-value feature contract. Browser feature extraction uses OpenCV.js, including the configured center ROI, resize, HSV histogram, Sobel orientation histogram, and texture statistics.
 
-The web demo uses captured-background motion segmentation with OpenCV.js GrabCut fallback, suppresses crops overlapping detected people, provides position/size guidance, and requires four stabilized view changes before reporting a verified result. The four views are deliberately named view_1 through view_4: the browser cannot truthfully infer physical front/left/right orientation from motion alone.
+The web demo uses captured-background motion segmentation with OpenCV.js GrabCut fallback, suppresses crops overlapping detected people, provides position/size guidance, and requires four stabilized view changes before reporting a verified result. The four views are deliberately named view_1 through view_4: the browser does not infer physical front/left/right orientation from motion alone.
 
 Training uses balanced class weights, session-safe splits, validation temperature calibration, bootstrap 95% accuracy intervals, and explicit unknown-object evaluation when an independently collected `dataset/unknown/` set is supplied. Automatic retraining is guarded self-training: multi-view agreement is required and a frozen-teacher regression gate protects the active model.
 
