@@ -17,7 +17,7 @@ const canvasContext = {
   },
 };
 
-const context = {
+class SpeechSynthesisUtterance {\n  constructor(text) { this.text = text; this.lang = ""; this.rate = 1; }\n}\n\nconst context = {
   window: {
     speechSynthesis: {
       cancel() {},
@@ -40,7 +40,7 @@ const context = {
   Int32Array,
   TextDecoder,
   atob: global.atob,
-  console,
+  console,\n  SpeechSynthesisUtterance,\n  navigator: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) } },\n  fetch: async () => ({ ok: true, json: async () => ({}) }),
 };
 
 vm.createContext(context);
