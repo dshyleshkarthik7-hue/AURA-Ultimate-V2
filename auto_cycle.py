@@ -22,9 +22,9 @@ def variants(frame,rng):
     views.append(cv2.warpAffine(frame,m,(w,h),borderMode=cv2.BORDER_REFLECT))
     return views
 
-def teacher_label(engine,frame):
+def teacher_label(engine,frame,rng):
     obs=[]
-    for view in variants(frame,np.random.default_rng(123)):
+    for view in variants(frame,rng):
         r=engine.predict(view)
         if not r.get("stable") or r.get("confidence",0)<.88:return None
         obs.append((r["label"],float(r["confidence"])))
@@ -50,12 +50,12 @@ def main():
     if not cam.open():raise SystemExit("camera open failed")
     teacher=PerceptionEngine(cfg)
     if teacher.model is None:raise SystemExit("existing teacher model required")
-    fx=FeatureExtractor(cfg["model"]["image_size"],cfg.get("roi"));samples=[];start=time.time()
+    fx=FeatureExtractor(cfg["model"]["image_size"],cfg.get("roi"));samples=[];start=time.time();variant_rng=np.random.default_rng(int(cfg["training"]["seed"])+97)
     try:
         while time.time()-start<args.seconds:
             ok,frame=cam.read()
             if not ok:continue
-            label=teacher_label(teacher,frame)
+            label=teacher_label(teacher,frame,variant_rng)
             if label is not None:samples.append((fx.extract(frame),label))
     finally:cam.release()
     labels=list(cfg["labels"]);counts={l:sum(1 for _,y in samples if y==l) for l in labels}
@@ -78,9 +78,11 @@ def main():
     metrics=evaluate(candidate,X[te],y[te],ux)
     teacher_pred=teacher.model.predict_proba(X[te]).argmax(1)
     metrics["teacher_accuracy"]=float((teacher_pred==y[te]).mean())
+    metrics["self_training"]={"source":"teacher_pseudo_labels","human_verified":False,"variant_seed":int(cfg["training"]["seed"])+97,"pseudo_samples":int(len(samples)),"train_samples":int(len(tr)),"calibration_samples":int(len(cal)),"test_samples":int(len(te))}
     if metrics["accuracy"]<metrics["teacher_accuracy"]-.01 or not promotion_gate(metrics):
         print("promotion gate failed; model unchanged");return
     candidate.model_version=max(int(getattr(teacher.model,"model_version",0))+1,6)
-    candidate_path=Path("models/candidate.npz");candidate.save(candidate_path)
+    candidate_path=Path("models/candidate.npz")
+    metadata=Path("models/candidate.metadata.json"); metadata.write_text(__import__("json").dumps({"feature_contract":FeatureExtractor.CONTRACT,"seed":cfg["training"]["seed"],"teacher_model_version":teacher.model.model_version,"pseudo_label_warning":"Labels are teacher-generated, not human-verified ground truth.","metrics":metrics},indent=2),encoding="utf-8");candidate.save(candidate_path)
     print("PROMOTED:",ModelRegistry().promote(candidate_path,metrics))
 if __name__=="__main__":main()

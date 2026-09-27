@@ -5,6 +5,7 @@ from aura.features import FeatureExtractor
 
 class FeatureContractTests(unittest.TestCase):
     def test_canonical_contract_is_329_finite_values(self):
+        self.assertEqual(FeatureExtractor.CONTRACT, 'opencv-v1-329')
         fx = FeatureExtractor(size=32, roi={"mode": "center", "width_ratio": .82, "height_ratio": .82})
         rng = np.random.default_rng(123)
         frame = rng.integers(0, 256, size=(64, 80, 3), dtype=np.uint8)

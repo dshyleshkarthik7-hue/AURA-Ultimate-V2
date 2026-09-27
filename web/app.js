@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);
 const state={
   running:false,stream:null,language:'en-IN',lastSpeak:0,model:null,modelReady:false,
   detector:null,detectorReady:false,stable:0,lastLabel:null,evidence:0,webConfig:null,
-  background:null,lastFrame:null,captures:[],viewPhase:0,lastCapture:0,objectBox:null
+  background:null,lastFrame:null,captures:[],viewPhase:0,lastCapture:0,objectBox:null,viewChanged:false,viewStableSince:0,lastSignature:null
 };
 const phrases={
  en:{ready:"I’m ready. I’ll inspect the scene and collect evidence automatically.",scan:"I’m analyzing the scene now.",done:o=>`I’ve identified ${o}. I fused evidence from multiple views.`,unknown:"I don’t have enough evidence yet. I’ll keep looking.",guide:t=>t},
@@ -49,18 +49,19 @@ function predict(f){const m=state.model,z=[];for(let k=0;k<m.labels.length;k++){
  const mx=Math.max(...z),e=z.map(v=>Math.exp(v-mx)),sum=e.reduce((a,b)=>a+b,0),p=e.map(v=>v/sum),o=p.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]);return{label:m.labels[o[0][1]],confidence:o[0][0],margin:o[0][0]-o[1][0]}
 }
 function colour(){
- const c=document.createElement('canvas');c.width=64;c.height=64;c.getContext('2d').drawImage($('camera'),0,0,64,64);
- const d=c.getContext('2d').getImageData(0,0,64,64).data;let r=0,g=0,b=0,n=0;
- for(let i=0;i<d.length;i+=16){r+=d[i];g+=d[i+1];b+=d[i+2];n++}r/=n;g/=n;b/=n;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);
- return mx-mn<28?(mx<70?'black':mx>190?'white':'silver/grey'):g>r*1.15&&g>b*1.1?'green':b>r*1.2?'blue':r>g*1.25?'red':'neutral'
+ if(!cvReady())return 'unknown';const v=$('camera'),c=document.createElement('canvas');c.width=96;c.height=96;
+ const box=state.objectBox;if(box&&box.w>10&&box.h>10)c.getContext('2d').drawImage(v,box.x,box.y,box.w,box.h,0,0,96,96);else c.getContext('2d').drawImage(v,0,0,96,96);
+ const src=cv.imread(c),hsv=new cv.Mat();
+ try{cv.cvtColor(src,hsv,cv.COLOR_RGBA2HSV);const vals=[];for(let i=0;i<hsv.data.length;i+=3)vals.push([hsv.data[i],hsv.data[i+1],hsv.data[i+2]]);vals.sort((x,y)=>x[0]-y[0]);const m=vals[Math.floor(vals.length/2)],h=m[0],s=m[1],vv=m[2];
+ if(vv<55)return'black';if(s<35&&vv>190)return'white';if(s<55)return'silver/grey';if(s>90&&h>=35&&h<85)return'green';if(s>90&&(h<12||h>=165))return'red';if(s>80&&h>=12&&h<35)return'orange/yellow';if(s>55&&h>=85&&h<135)return'blue';return'neutral'}finally{src.delete();hsv.delete()}
 }
 function sceneMask(){
  const v=$('camera'),w=v.videoWidth||1280,h=v.videoHeight||720,c=document.createElement('canvas');c.width=160;c.height=100;
  const x=c.getContext('2d');x.drawImage(v,0,0,160,100);const d=x.getImageData(0,0,160,100).data;
  let minX=160,minY=100,maxX=0,maxY=0,count=0;
  if(state.background){const bd=state.background;for(let i=0;i<d.length;i+=4){const dr=Math.abs(d[i]-bd[i]),dg=Math.abs(d[i+1]-bd[i+1]),db=Math.abs(d[i+2]-bd[i+2]);if((dr+dg+db)>72){const p=i/4,px=p%160,py=Math.floor(p/160);count++;minX=Math.min(minX,px);maxX=Math.max(maxX,px);minY=Math.min(minY,py);maxY=Math.max(maxY,py)}}}
- if(count<80)return null;
- return{x:minX/160*w,y:minY/100*h,w:(maxX-minX+1)/160*w,h:(maxY-minY+1)/100*h,area:count/(160*100),cx:(minX+maxX)/320,cy:(minY+maxY)/200}
+ if(count>=80)return{x:minX/160*w,y:minY/100*h,w:(maxX-minX+1)/160*w,h:(maxY-minY+1)/100*h,area:count/(160*100),cx:(minX+maxX)/320,cy:(minY+maxY)/200};
+ return grabCutBox();
 }
 function guidance(mask){
  if(!mask)return{action:'move_closer',text:'Place one object clearly inside the guide.'};
@@ -76,23 +77,30 @@ function excludePerson(dets,box){
  if(!box)return null;const people=dets.filter(x=>x.class==='person'&&x.score>.55);if(!people.length)return box;
  const overlaps=people.some(p=>{const [x,y,w,h]=p.bbox;const ix=Math.max(0,Math.min(box.x+box.w,x+w)-Math.max(box.x,x));const iy=Math.max(0,Math.min(box.y+box.h,y+h)-Math.max(box.y,y));return ix*iy>box.w*box.h*.25});return overlaps?null:box
 }
-function progress(p,mask){
- if(state.lastLabel===p.label)state.stable++;else{state.lastLabel=p.label;state.stable=1}
- state.evidence=Math.min(7,state.stable);$('evidenceBar').style.width=(state.evidence/7*100)+'%';$('evidenceText').textContent=state.evidence+' / 7 consistent observations';
- if(mask)$('conditionText').textContent='object view '+(state.captures.length+1)+' / 4'
+function roiSignature(mask){
+ const v=$('camera'),c=document.createElement('canvas');c.width=32;c.height=32;const x=c.getContext('2d');
+ if(mask&&mask.w>8&&mask.h>8)x.drawImage(v,mask.x,mask.y,mask.w,mask.h,0,0,32,32);else x.drawImage(v,0,0,32,32);
+ const d=x.getImageData(0,0,32,32).data;let out=0;for(let i=0;i<d.length;i+=16)out+=Math.abs(d[i]-d[i+4])+Math.abs(d[i+1]-d[i+5])+Math.abs(d[i+2]-d[i+6]);return out/(d.length/16*3*255);
 }
-function captureView(p,mask){
- const now=Date.now();if(!mask||now-state.lastCapture<900||state.captures.length>=4)return;
- if(state.captures.length===0&&mask.cx>.42&&mask.cx<.58){state.captures.push({label:p.label,confidence:p.confidence,view:'front'});state.lastCapture=now}
- else if(state.captures.length===1&&mask.cx<.48){state.captures.push({label:p.label,confidence:p.confidence,view:'left'});state.lastCapture=now}
- else if(state.captures.length===2&&mask.cx>.52){state.captures.push({label:p.label,confidence:p.confidence,view:'right'});state.lastCapture=now}
- else if(state.captures.length===3&&mask.cx>.42&&mask.cx<.58){state.captures.push({label:p.label,confidence:p.confidence,view:'final'});state.lastCapture=now}
- if(state.captures.length<4&&state.captures.length>0)$('guidance').textContent=['Turn slightly left for another view.','Turn slightly right for another view.','Return to center for the final view.'][state.captures.length-1]||'Hold steady.';
- if(state.captures.length===4){$('guidance').textContent='Four views captured. Evidence fused.';say('done',p.label.replaceAll('_',' '))}
+function viewEvidence(p,mask){
+ const now=Date.now(),sig=roiSignature(mask);
+ if(state.lastSignature!==null){const delta=Math.abs(sig-state.lastSignature);if(delta>.035){state.viewChanged=true;state.viewStableSince=0}else if(state.viewChanged){if(!state.viewStableSince)state.viewStableSince=now}}
+ state.lastSignature=sig;
+ const labels=['front','left','right','final'],next=state.captures.length;
+ if(next===0){
+   if(now-state.lastCapture>1400){state.captures.push({label:p.label,confidence:p.confidence,view:'front',signature:sig});state.lastCapture=now;say('scan')}
+ }else if(next<4){
+   const names=['left','right','final'];$('guidance').textContent=`Turn slightly ${names[next-1]||'back to center'} and hold steady.`;
+   if(state.viewChanged&&state.viewStableSince&&now-state.viewStableSince>550&&now-state.lastCapture>1100){
+     state.captures.push({label:p.label,confidence:p.confidence,view:labels[next],signature:sig,motion_confirmed:true});state.lastCapture=now;state.viewChanged=false;state.viewStableSince=0
+   }
+ }
+ if(state.captures.length===4){$('guidance').textContent='Four distinct stabilized views captured. Evidence fused.';say('done',p.label.replaceAll('_',' '))}
+ $('conditionText').textContent=state.captures.length+' / 4 stabilized views';
 }
 async function loadModel(){
  state.webConfig=await fetch('model_config.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('model config unavailable');return r.json()});
- state.model=await fetch('model.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('model unavailable');return r.json()});
+ state.model=await fetch('model.b64',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('model artifact unavailable');return r.text()}).then(loadNpz);
  if(state.model.feature_length!==state.webConfig.feature_length||state.model.labels.join('|')!==state.webConfig.labels.join('|'))throw Error('model/config contract mismatch');
  state.modelReady=true;$('eval').textContent='Browser inference: trained model active'
 }
@@ -109,7 +117,7 @@ async function process(){
  if(person&&!state.objectBox){state.stable=0;state.lastLabel=null;$('systemStatus').textContent='PERSON / OBJECT OCCLUDED';$('guidance').textContent='Move your hand or body away from the object.'}
  else if(state.modelReady){
    try{const p=predict(feature()),threshold=Math.max(state.webConfig.confidence_threshold,state.model.unknown_threshold);
-     if(p.confidence>=threshold&&p.margin>=state.webConfig.margin_threshold){progress(p,mask);$('object').textContent=p.label.replaceAll('_',' ');$('confidence').textContent=Math.round(p.confidence*100)+'%';$('colour').textContent=colour();$('systemStatus').textContent=state.captures.length>=4?'VERIFIED':'COLLECTING';const g=guidance(mask);$('guidance').textContent=g.text;captureView(p,mask);if(state.captures.length<4)say('scan')}
+     if(p.confidence>=threshold&&p.margin>=state.webConfig.margin_threshold){progress(p,mask);$('object').textContent=p.label.replaceAll('_',' ');$('confidence').textContent=Math.round(p.confidence*100)+'%';$('colour').textContent=colour();$('systemStatus').textContent=state.captures.length>=4&&state.evidence>=7?'VERIFIED':'COLLECTING';const g=guidance(mask);$('guidance').textContent=g.text;captureView(p,mask);if(state.captures.length<4)say('scan')}
      else{state.stable=0;state.lastLabel=null;$('systemStatus').textContent='UNCERTAIN';$('guidance').textContent=guidance(mask).text;say('unknown')}
    }catch(e){$('systemStatus').textContent='INFERENCE ERROR';$('eval').textContent=e.message}
  }else $('systemStatus').textContent='MODEL UNAVAILABLE';
@@ -123,5 +131,5 @@ async function start(){
   process()
  }catch(e){$('systemStatus').textContent='CAMERA/MODEL UNAVAILABLE';$('eval').textContent=e.message;say('unknown')}
 }
-function reset(){state.stable=0;state.lastLabel=null;state.evidence=0;state.captures=[];state.objectBox=null;state.background=null;$('evidenceBar').style.width='0';$('evidenceText').textContent='0 / 7 consistent observations';$('conditionText').textContent='adaptive';['object','colour','confidence'].forEach(id=>$(id).textContent='—');$('systemStatus').textContent=state.running?'PERCEIVING':'READY';$('guidance').textContent='Start perception and place an object in view.';say('ready')}
+function reset(){state.stable=0;state.lastLabel=null;state.evidence=0;state.captures=[];state.objectBox=null;state.background=null;state.viewChanged=false;state.viewStableSince=0;state.lastSignature=null;state.viewChanged=false;state.viewStableSince=0;state.lastSignature=null;$('evidenceBar').style.width='0';$('evidenceText').textContent='0 / 7 consistent observations';$('conditionText').textContent='adaptive';['object','colour','confidence'].forEach(id=>$(id).textContent='—');$('systemStatus').textContent=state.running?'PERCEIVING':'READY';$('guidance').textContent='Start perception and place an object in view.';say('ready')}
 $('start').onclick=start;$('capture').onclick=()=>{if(state.running)say('scan');else say('ready')};$('reset').onclick=reset;$('language').onchange=e=>{state.language=e.target.value;say('ready')};say('ready');

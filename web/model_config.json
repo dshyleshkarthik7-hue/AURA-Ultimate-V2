@@ -5,5 +5,6 @@
   "confidence_threshold": 0.72,
   "margin_threshold": 0.12,
   "feature_length": 329,
+  "feature_contract": "opencv-v1-329",
   "model_version": 4
 }
