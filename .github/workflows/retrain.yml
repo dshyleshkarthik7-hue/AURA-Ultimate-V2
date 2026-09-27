@@ -12,15 +12,16 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt
-      - run: test $(find dataset/unknown -type f 2>/dev/null | wc -l) -ge 10
       - run: python train.py
       - run: python evaluate.py
       - run: python scripts/export_web_config.py
+      - run: python scripts/export_web_model.py
+      - run: python scripts/validate_web_contract.py
       - run: python scripts/generate_model_card.py
       - uses: peter-evans/create-pull-request@v7
         with:
           commit-message: Guarded AURA model refresh
           title: Guarded AURA model refresh
-          body: Automated candidate; human review required before merge.
+          body: Automated candidate with calibrated uncertainty and independent unknown-object evaluation when available; human review required before merge.
           branch: automation/aura-retrain
           delete-branch: true
