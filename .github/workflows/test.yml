@@ -15,3 +15,4 @@ jobs:
       - run: python scripts/validate_web_contract.py
       - run: python scripts/validate_model_artifact.py
       - run: node --check web/app.js
+      - run: node tests/web_smoke.js
