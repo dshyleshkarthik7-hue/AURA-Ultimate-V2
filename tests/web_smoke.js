@@ -17,7 +17,15 @@ const canvasContext = {
   },
 };
 
-class SpeechSynthesisUtterance {\n  constructor(text) { this.text = text; this.lang = ""; this.rate = 1; }\n}\n\nconst context = {
+class SpeechSynthesisUtterance {
+  constructor(text) {
+    this.text = text;
+    this.lang = "";
+    this.rate = 1;
+  }
+}
+
+const context = {
   window: {
     speechSynthesis: {
       cancel() {},
@@ -40,7 +48,14 @@ class SpeechSynthesisUtterance {\n  constructor(text) { this.text = text; this.l
   Int32Array,
   TextDecoder,
   atob: global.atob,
-  console,\n  SpeechSynthesisUtterance,\n  navigator: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) } },\n  fetch: async () => ({ ok: true, json: async () => ({}) }),
+  console,
+  SpeechSynthesisUtterance,
+  navigator: {
+    mediaDevices: {
+      getUserMedia: async () => ({ getTracks: () => [] }),
+    },
+  },
+  fetch: async () => ({ ok: true, json: async () => ({}) }),
 };
 
 vm.createContext(context);
