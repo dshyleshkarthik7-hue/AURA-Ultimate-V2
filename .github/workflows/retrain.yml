@@ -1,8 +1,6 @@
 name: guarded-retrain
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 3 * * 0'
 jobs:
   retrain:
     runs-on: ubuntu-latest
@@ -22,6 +20,9 @@ jobs:
         with:
           commit-message: Guarded AURA model refresh
           title: Guarded AURA model refresh
-          body: Automated candidate with calibrated uncertainty and independent unknown-object evaluation when available; human review required before merge.
+          body: >-
+            Manually triggered candidate training run. Existing images may be temporally correlated;
+            metrics are not independent-session validation. Human review and independent data
+            evaluation are required before merge. This workflow does not establish production readiness.
           branch: automation/aura-retrain
           delete-branch: true
