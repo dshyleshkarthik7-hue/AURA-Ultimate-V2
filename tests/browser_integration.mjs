@@ -11,6 +11,7 @@ try{
  const page=await browser.newPage();
  await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>window.__AURA_CV_READY__===true,{timeout:30000});
+ await page.waitForFunction(()=>document.getElementById("eval")?.textContent.includes("trained model active"),{timeout:30000});
  const r=await page.evaluate(async()=>{
    const c=document.createElement("canvas");c.width=80;c.height=64;
    const ctx=c.getContext("2d"),d=ctx.createImageData(80,64);
