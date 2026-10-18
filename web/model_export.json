@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "artifact_format": "npz-base64",
+  "feature_contract": "opencv-v1-329",
+  "feature_length": 329,
+  "labels": [
+    "steel_glass",
+    "steel_water_bottle",
+    "bottle_gourd"
+  ],
+  "model_version": 6,
+  "temperature": 0.6499999761581421,
+  "unknown_threshold": 0.550000011920929
+}
