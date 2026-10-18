@@ -4,11 +4,14 @@ from .features import FeatureExtractor
 from .model import AuraSoftmax
 from .quality import assess
 from .temporal import TemporalConsensus
-from .scene import analyse_scene, foreground_mask, crop_from_mask, dominant_colour, environment, guidance
+from .scene import analyse_scene, dominant_colour, environment
 class PerceptionEngine:
     def __init__(self,cfg):
         self.cfg=cfg;self.fx=FeatureExtractor(cfg["model"]["image_size"],cfg.get("roi"))
-        path=Path(cfg["model"]["path"]);self.model=AuraSoftmax.load(path) if path.exists() else None
+        from .model_registry import ModelRegistry
+        active=ModelRegistry().active_path()
+        path=active if active is not None and active.exists() else Path(cfg["model"]["path"])
+        self.model=AuraSoftmax.load(path) if path.exists() else None
         self.temporal=TemporalConsensus(cfg["stability"]["window"]);self.background=None
     def _unknown(self,reason,q,confidence=0.0,scene=None):
         return {"label":"unknown","raw_label":None,"confidence":float(confidence),"stable":False,"reason":reason,"quality":q,"scene":scene}
@@ -16,11 +19,13 @@ class PerceptionEngine:
         q=assess(frame,self.cfg);scene=analyse_scene(frame)
         if not q["ok"]:
             self.temporal.reject();return self._unknown(q["reason"],q,scene=scene)
-        mask=foreground_mask(frame,self.background);crop=crop_from_mask(frame,mask)
-        colour=dominant_colour(crop);env=environment(frame,scene);guide=guidance(mask,frame.shape)
+        # Training uses the full frame plus the configured center ROI. Do not crop to a
+        # GrabCut foreground at inference: that is both expensive and a feature mismatch.
+        colour=dominant_colour(frame);env=environment(frame,scene)
+        guide={"action":"capture","text":"Keep the object centered and well lit."}
         if self.model is None:
             self.temporal.reject();return self._unknown("model_not_trained",q,0.0,scene)
-        f=self.fx.extract(crop);probs=self.model.predict_proba(f[None,:])[0];order=np.argsort(probs)[::-1]
+        f=self.fx.extract(frame);probs=self.model.predict_proba(f[None,:])[0];order=np.argsort(probs)[::-1]
         if len(order)<2:return self._unknown("invalid_model",q,0.0,scene)
         top,second=map(int,order[:2]);conf=float(probs[top]);margin=float(probs[top]-probs[second])
         threshold=max(float(self.cfg["model"]["confidence_threshold"]),float(getattr(self.model,"unknown_threshold",.55)))
