@@ -48,7 +48,8 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
   let paypalConfig=null, paypalPromise=null, checkoutTickets=new Map();
   function objectList(){
     const entered=byId("contextObjects").value.split(",").map(norm).filter(Boolean);
-    const verified=state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4;\n    const detected=verified?[norm(state.lastLabel)]:[];
+    const verified=state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4;
+    const detected=verified?[norm(state.lastLabel)]:[];
     return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&verified?0.9:0.7,source:label===norm(state.lastLabel)?"aura perception":"user supplied"}));
   }
   function analyse(){
