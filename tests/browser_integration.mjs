@@ -4,7 +4,7 @@ import {join,extname} from "node:path";
 import {cwd} from "node:process";
 import {chromium} from "playwright";
 const root=cwd(),mime={".html":"text/html",".js":"text/javascript",".json":"application/json",".css":"text/css",".b64":"text/plain"};
-const server=createServer((req,res)=>{try{const p=join(root,"web",decodeURIComponent(req.url==="/"?"index.html":req.url));if(!p.startsWith(join(root,"web")))throw Error("bad path");res.writeHead(200,{"content-type":mime[extname(p)]||"application/octet-stream"});res.end(readFileSync(p))}catch(e){res.writeHead(404);res.end("not found")}});
+const server=createServer((req,res)=>{try{const p=join(root,"web",decodeURIComponent(req.url==="/"?"index.html":req.url));if(!p.startsWith(join(root,"web")))throw Error("bad path");const body=readFileSync(p);res.writeHead(200,{"content-type":mime[extname(p)]||"application/octet-stream"});res.end(body)}catch(e){res.writeHead(404);res.end("not found")}});
 server.listen(4173,"127.0.0.1");
 const browser=await chromium.launch({headless:true});
 try{
