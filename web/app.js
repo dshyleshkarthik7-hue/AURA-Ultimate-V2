@@ -111,7 +111,7 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
     if(!Recognition){byId("contextResult").textContent="Speech recognition is not available in this browser. You can type your question instead.";return;}
     const rec=new Recognition();rec.lang=state.language||"en-IN";rec.interimResults=false;rec.maxAlternatives=1;
     byId("contextResult").textContent="Listening… Your browser may process voice through its speech provider.";
-    rec.onresult=e=>{const text=e.results?.[0]?.[0]?.transcript||"";byId("contextQuestion").insertAdjacentHTML("beforebegin",'');byId("contextObjects").value=byId("contextObjects").value;byId("contextResult").textContent="Heard: "+text+" — choose the closest intent above or type a specific question.";};
+    rec.onresult=e=>{const text=e.results?.[0]?.[0]?.transcript||"";byId("contextQuestion").value=text;analyse();};
     rec.onerror=()=>{byId("contextResult").textContent="Voice input failed or was blocked. Type your question instead.";};
     try{rec.start();}catch(e){byId("contextResult").textContent="Voice input could not start. Type your question instead.";}
   });
