@@ -3,6 +3,6 @@ export default async () => {
   return Response.json({
     enabled: Boolean(clientId),
     clientId: clientId || null,
-    mode: (Netlify.env.get("PAYPAL_MODE") ?? "sandbox").toLowerCase() === "live" ? "live" : "sandbox",
+    mode: "sandbox",
   }, { headers: { "Cache-Control": "no-store" } });
 };
