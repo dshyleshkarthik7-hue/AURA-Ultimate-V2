@@ -1,4 +1,5 @@
 [build]
+command = "python -m pip install --disable-pip-version-check -r requirements.txt && python scripts/export_web_config.py && python scripts/export_web_model.py"
 publish = "web"
 
 [[headers]]
@@ -8,3 +9,9 @@ X-Frame-Options = "SAMEORIGIN"
 X-Content-Type-Options = "nosniff"
 Referrer-Policy = "strict-origin-when-cross-origin"
 Permissions-Policy = "camera=(self), microphone=(self)"
+
+[[headers]]
+for = "/*"
+[headers.values]
+Cross-Origin-Opener-Policy = "same-origin"
+Cross-Origin-Resource-Policy = "same-origin"
