@@ -67,7 +67,9 @@ function reason(objects: SceneObject[], question: string, constraints: Record<st
     if (Number.isFinite(roomWidth) && roomWidth > 0 && Number.isFinite(productWidth) && productWidth > 0) {
       const fits = productWidth <= roomWidth;
       observations.push("Entered widths: product " + productWidth + " cm; available space " + roomWidth + " cm.");
-      relations.push({ subject: object("desk")?.id ?? objects[0].id, predicate: fits ? "fits_entered_width" : "exceeds_entered_width", object: objects[0].id, confidence: 0.9, evidence: "Arithmetic using user-entered widths only; depth, clearance and measurement accuracy are not checked.", status: "needs_verification" });
+      observations.push(fits
+        ? "The entered product width is no greater than the entered available width; this checks width only."
+        : "The entered product width exceeds the entered available width.");
       if (!fits) recommendations.push({ item: "Re-measure or choose a narrower item", reason: "The entered product width exceeds the entered available width." });
     } else missing.push("Available width and product width in centimetres (and depth/clearance where relevant)");
     observations.push("Camera pixels do not provide reliable physical dimensions without a calibrated reference.");
