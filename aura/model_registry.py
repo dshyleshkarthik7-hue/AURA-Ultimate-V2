@@ -9,6 +9,11 @@ class ModelRegistry:
         if not self.manifest.exists(): return {"active":None,"history":[]}
         m=json.loads(self.manifest.read_text(encoding="utf-8"))
         if not isinstance(m,dict) or not isinstance(m.get("history"),list): raise ValueError("Invalid registry manifest")
+        active=m.get("active")
+        if active is not None:
+            p=Path(active)
+            if not p.is_absolute(): p=Path.cwd()/p
+            if not p.is_file(): raise ValueError("Active registry model is missing: "+str(p))
         return m
     def _write(self,m):
         fd,tmp=tempfile.mkstemp(prefix=".manifest-",dir=self.root)
