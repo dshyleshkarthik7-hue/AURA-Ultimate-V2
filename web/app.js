@@ -31,7 +31,7 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
 
 /* AURA Context Intelligence: deterministic, inspectable reasoning on the client. */
 (function initAuraContext(){
-  const byId=id=>document.getElementById(id);
+  const byId=id=>document.getElementById(id);\n  const on=(id,event,handler)=>{const node=byId(id);if(node&&typeof node.addEventListener==="function")node.addEventListener(event,handler);};
   const catalogue=[
     {sku:"usb-c-hub",name:"USB-C hub",price:"24.00",ports:"USB-C / HDMI / USB-A"},
     {sku:"hdmi-cable",name:"HDMI cable",price:"9.00",ports:"HDMI"},
@@ -98,15 +98,15 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
       '<p class="muted">Hypotheses only — not physical measurements, safety certification, or a guarantee of compatibility. Demo catalogue data is illustrative.</p>';
     if(window.speechSynthesis&&byId("contextSpeak")?.checked) speak(summary);
   }
-  byId("analyzeContext").addEventListener("click",analyse);
-  byId("useDetection").addEventListener("click",()=>{
+  on("analyzeContext","click",analyse);
+  on("useDetection","click",()=>{
     if(state.lastLabel&&state.lastLabel!=="unknown"){
       const current=byId("contextObjects").value.trim();
       byId("contextObjects").value=[current,state.lastLabel.replaceAll("_"," ")].filter(Boolean).join(", ");
       byId("contextQuestion").focus();
     }else byId("contextResult").textContent="AURA has not produced an object label yet. Start perception or enter the label manually.";
   });
-  byId("voiceQuestion").addEventListener("click",()=>{
+  on("voiceQuestion","click",()=>{
     const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!Recognition){byId("contextResult").textContent="Speech recognition is not available in this browser. You can type your question instead.";return;}
     const rec=new Recognition();rec.lang=state.language||"en-IN";rec.interimResults=false;rec.maxAlternatives=1;
@@ -118,7 +118,7 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
   function renderCatalog(){
     const host=byId("commerceCatalog");
     host.innerHTML=catalogue.map(p=>'<article class="commerce-card"><div><strong>'+esc(p.name)+'</strong><p>$'+esc(p.price)+' USD <small>· demo price</small></p><small>'+esc(p.ports)+'</small></div><button type="button" data-checkout="'+esc(p.sku)+'">Set up PayPal</button><div class="paypal-target" id="paypal-'+esc(p.sku)+'"></div></article>').join("");
-    host.querySelectorAll("[data-checkout]").forEach(btn=>btn.addEventListener("click",()=>setupButtons(btn.dataset.checkout)));
+    if(typeof host.querySelectorAll==="function")host.querySelectorAll("[data-checkout]").forEach(btn=>btn.addEventListener("click",()=>setupButtons(btn.dataset.checkout)));
   }
   async function loadPayPal(){
     if(paypalPromise)return paypalPromise;
