@@ -63,7 +63,7 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
       byId("contextGraph").innerHTML=""; return;
     }
     const labels=objects.map(x=>x.label);
-    if(/connect|plug|port|monitor|display/.test(q)){
+    if(/\b(connect|plug|ports?|monitor|display)\b/.test(q)){
       intent="compatibility";
       const laptop=objects.find(x=>x.label==="laptop"), monitor=objects.find(x=>x.label==="monitor");
       if(laptop&&monitor){
