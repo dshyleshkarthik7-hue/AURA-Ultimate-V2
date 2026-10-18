@@ -22,5 +22,13 @@ try{
    return {length:f.length,finite:Array.from(f).every(Number.isFinite),hash};
  });
  if(r.length!==329||!r.finite||r.hash!=="0a218a0b0c04c3cc27f6a9b41cf21610bd3fcfacf872c9493c1115b8a1731cd7")throw Error("Python/browser feature parity failed: "+JSON.stringify(r));
- console.log("browser OpenCV + 329-value Python golden vector OK");
+ const context=await page.evaluate(()=>{
+   document.getElementById("contextObjects").value="laptop, monitor";
+   document.getElementById("contextQuestion").value="Can I connect this monitor?";
+   document.getElementById("analyzeContext").click();
+   return {result:document.getElementById("contextResult").textContent,graph:document.getElementById("contextGraph").textContent};
+ });
+ if(!context.result.includes("compatibility")||!context.graph.includes("laptop")||!context.graph.includes("monitor"))
+   throw Error("AURA context reasoning UI failed: "+JSON.stringify(context));
+ console.log("browser OpenCV + 329-value Python golden vector + context reasoning OK");
 }finally{await browser.close();server.close()}
