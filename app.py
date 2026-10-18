@@ -377,6 +377,7 @@ def main():
 
     paused = False
     result_locked = False
+    locked_result = None
     language_menu = False
 
     failure_count = 0
@@ -453,6 +454,7 @@ def main():
                 if result.get("stable", False):
 
                     result_locked = True
+                    locked_result = dict(result)
 
                     label = result.get(
                         "label",
@@ -504,7 +506,7 @@ def main():
                     (0, 180, 255),
                 )
 
-            if result_locked and result is not None:
+            if result_locked and locked_result is not None:
 
                 draw_panel(
                     display,
@@ -515,7 +517,7 @@ def main():
 
                 draw_result_card(
                     display,
-                    result,
+                    locked_result,
                 )
 
             draw_footer(
@@ -555,6 +557,7 @@ def main():
                 ord("R"),
             ):
                 result_locked = False
+                locked_result = None
                 paused = False
                 language_menu = False
 
