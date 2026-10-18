@@ -5,6 +5,14 @@
   <p class="context-intro">Connect object observations to practical next steps. AURA will show evidence gaps instead of guessing.</p>
   <label for="contextObjects">Objects in your scene</label>
   <input id="contextObjects" type="text" placeholder="e.g. laptop, monitor, USB-C hub" autocomplete="off">
+  <div class="constraint-grid" aria-label="Optional measurements">
+    <label for="availableWidth">Available width (cm)<input id="availableWidth" type="number" min="0" max="100000" step="0.1" placeholder="e.g. 140"></label>
+    <label for="productWidth">Product width (cm)<input id="productWidth" type="number" min="0" max="100000" step="0.1" placeholder="e.g. 120"></label>
+    <label for="availableDepth">Available depth (cm)<input id="availableDepth" type="number" min="0" max="100000" step="0.1" placeholder="optional"></label>
+    <label for="productDepth">Product depth (cm)<input id="productDepth" type="number" min="0" max="100000" step="0.1" placeholder="optional"></label>
+    <label for="budgetUsd">Budget (USD)<input id="budgetUsd" type="number" min="0" max="100000" step="0.01" placeholder="optional"></label>
+    <label for="deviceModel">Device model details<input id="deviceModel" type="text" maxlength="120" placeholder="e.g. exact laptop / monitor model"></label>
+  </div>
   <div class="context-actions">
     <label for="contextQuestion">What do you want to know?</label>
     <input id="contextQuestion" list="contextQuestionExamples" value="Describe this scene" placeholder="e.g. Can I connect this monitor?"><datalist id="contextQuestionExamples"><option value="Describe this scene"></option><option value="Can I connect this monitor?"></option><option value="Will this fit my room?"></option><option value="What should I buy?"></option></datalist>
