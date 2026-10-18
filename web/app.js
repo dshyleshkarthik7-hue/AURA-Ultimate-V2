@@ -48,8 +48,8 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
   let paypalConfig=null, paypalPromise=null, checkoutTickets=new Map();
   function objectList(){
     const entered=byId("contextObjects").value.split(",").map(norm).filter(Boolean);
-    const detected=state.lastLabel&&state.lastLabel!=="unknown"&&state.stable>=1?[norm(state.lastLabel)]:[];
-    return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&state.stable>=7?.9:.7,source:label===norm(state.lastLabel)?"aura perception":"user supplied"}));
+    const verified=state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4;\n    const detected=verified?[norm(state.lastLabel)]:[];
+    return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&verified?0.9:0.7,source:label===norm(state.lastLabel)?"aura perception":"user supplied"}));
   }
   function analyse(){
     const objects=objectList(), question=byId("contextQuestion").value, q=norm(question);
@@ -100,7 +100,7 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
   }
   on("analyzeContext","click",analyse);
   on("useDetection","click",()=>{
-    if(state.lastLabel&&state.lastLabel!=="unknown"){
+    if(state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4){
       const current=byId("contextObjects").value.trim();
       byId("contextObjects").value=[current,state.lastLabel.replaceAll("_"," ")].filter(Boolean).join(", ");
       byId("contextQuestion").focus();
