@@ -9,13 +9,46 @@ from aura.model import AuraSoftmax
 from aura.augmentation import augment
 from aura.calibration import fit_temperature,fit_unknown_threshold
 
-def split_indices(y,k,val_frac,test_frac,rng):
-    tr=[];va=[];te=[]
+def split_indices(y, groups, k, val_frac, test_frac, rng):
+    """Split whole capture sessions; never distribute frames from one session across partitions."""
+    y = np.asarray(y, dtype=np.int64)
+    groups = np.asarray(groups, dtype=str)
+    unique_groups = np.unique(groups)
+    if len(unique_groups) < 3:
+        raise ValueError(
+            "Session-safe evaluation requires at least 3 independent capture sessions. "
+            "Recollect data with collect.py; existing flat legacy images have no reliable session metadata."
+        )
+    group_labels = {}
+    for group in unique_groups:
+        labels_in_group = np.unique(y[groups == group])
+        if len(labels_in_group) != 1:
+            raise ValueError(f"Capture session {group!r} contains multiple labels")
+        group_labels[group] = int(labels_in_group[0])
+    tr=[]; va=[]; te=[]
     for c in range(k):
-        a=np.where(y==c)[0];rng.shuffle(a);n=len(a);nt=max(1,int(round(n*test_frac)));nv=max(1,int(round(n*val_frac)))
-        if nt+nv>=n:raise ValueError(f"Class {c} has too few images for train/validation/test")
-        te+=a[:nt].tolist();va+=a[nt:nt+nv].tolist();tr+=a[nt+nv:].tolist()
-    rng.shuffle(tr);rng.shuffle(va);rng.shuffle(te)
+        class_groups=np.asarray([g for g in unique_groups if group_labels[g] == c], dtype=str)
+        rng.shuffle(class_groups)
+        if len(class_groups) < 3:
+            raise ValueError(
+                f"Class {c} has only {len(class_groups)} capture sessions; "
+                "at least 3 are required for train/validation/test."
+            )
+        n=len(class_groups)
+        ntest=max(1,int(round(n*test_frac)))
+        nval=max(1,int(round(n*val_frac)))
+        while ntest+nval>=n:
+            if nval>1:nval-=1
+            elif ntest>1:ntest-=1
+            else:raise ValueError(f"Class {c} needs more capture sessions")
+        test_groups=set(class_groups[:ntest])
+        val_groups=set(class_groups[ntest:ntest+nval])
+        train_groups=set(class_groups[ntest+nval:])
+        te.extend(np.where(np.isin(groups,list(test_groups)))[0].tolist())
+        va.extend(np.where(np.isin(groups,list(val_groups)))[0].tolist())
+        tr.extend(np.where(np.isin(groups,list(train_groups)))[0].tolist())
+    for indices in (tr, va, te):
+        rng.shuffle(indices)
     return tuple(np.asarray(z,dtype=np.int64) for z in (tr,va,te))
 
 def write_manifest(root,labels,files_by):
@@ -34,12 +67,12 @@ def load_features(files,fx):
 def main():
     p=argparse.ArgumentParser();p.add_argument("--config",default="config.yaml");a=p.parse_args();cfg=load_config(a.config)
     root=Path(cfg["dataset"]["root"]);labels=list(cfg["labels"]);files_by=validate_dataset(root,labels,cfg["training"]["min_images_per_class"]);write_manifest(root,labels,files_by)
-    fx=FeatureExtractor(cfg["model"]["image_size"],cfg.get("roi"));X=[];y=[];paths=[]
+    fx=FeatureExtractor(cfg["model"]["image_size"],cfg.get("roi"));X=[];y=[];paths=[];groups=[]
     for ci,label in enumerate(labels):
-        xx,pp=load_features(files_by[label],fx);X.extend(xx);y.extend([ci]*len(pp));paths.extend(pp)
+        xx,pp=load_features(files_by[label],fx);X.extend(xx);y.extend([ci]*len(pp));paths.extend(pp);groups.extend([str(Path(path).parent) for path in pp])
     X=np.asarray(X,np.float32);y=np.asarray(y,np.int64)
     if len(X)==0:raise SystemExit("No readable training images")
-    rng=np.random.default_rng(cfg["training"]["seed"]);tr,va,te=split_indices(y,len(labels),cfg["training"]["validation_fraction"],cfg["training"]["test_fraction"],rng)
+    rng=np.random.default_rng(cfg["training"]["seed"]);tr,va,te=split_indices(y,groups,len(labels),cfg["training"]["validation_fraction"],cfg["training"]["test_fraction"],rng)
     Xtr=X[tr];ytr=y[tr];extra=[];extra_y=[];arng=np.random.default_rng(cfg["training"]["seed"]+1)
     for i in tr:
         im=cv2.imread(paths[i])
@@ -53,6 +86,6 @@ def main():
     ux,_=load_features(unknown_files,fx)
     if len(ux)>=int(cfg["training"].get("unknown_min_samples",10)):fit_unknown_threshold(model,X[va],ux)
     model.save(cfg["model"]["path"])
-    Path("splits.json").write_text(json.dumps({"train":[paths[i] for i in tr],"validation":[paths[i] for i in va],"test":[paths[i] for i in te]},indent=2),encoding="utf-8")
+    Path("splits.json").write_text(json.dumps({"train":[paths[i] for i in tr],"validation":[paths[i] for i in va],"test":[paths[i] for i in te],"split_strategy":"capture-session-grouped","session_ids":{"train":sorted(set(groups[i] for i in tr)),"validation":sorted(set(groups[i] for i in va)),"test":sorted(set(groups[i] for i in te))}},indent=2),encoding="utf-8")
     print("saved",cfg["model"]["path"],"temperature",model.temperature,"unknown_threshold",model.unknown_threshold,"train/val/test",len(tr),len(va),len(te))
 if __name__=="__main__":main()
