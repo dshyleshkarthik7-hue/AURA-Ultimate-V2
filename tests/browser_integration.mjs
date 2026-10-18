@@ -22,12 +22,13 @@ try{
    return {length:f.length,finite:Array.from(f).every(Number.isFinite),hash};
  });
  if(r.length!==329||!r.finite||r.hash!=="4194e36e9bf2e4d92e798f69ae12e49b8a1fe82ec74fe4942e90c2d098662f5f")throw Error("Python/browser feature parity failed: "+JSON.stringify(r));
- const context=await page.evaluate(()=>{
+ await page.evaluate(()=>{
    document.getElementById("contextObjects").value="laptop, monitor";
    document.getElementById("contextQuestion").value="Can I connect this monitor?";
    document.getElementById("analyzeContext").click();
-   return {result:document.getElementById("contextResult").textContent,graph:document.getElementById("contextGraph").textContent};
  });
+ await page.waitForFunction(()=>document.getElementById("contextResult")?.textContent.includes("Local result (compatibility)")||document.getElementById("contextResult")?.textContent.includes("AI-assisted answer"),{timeout:10000});
+ const context=await page.evaluate(()=>({result:document.getElementById("contextResult").textContent,graph:document.getElementById("contextGraph").textContent}));
  if(!context.result.includes("compatibility")||!context.graph.includes("laptop")||!context.graph.includes("monitor"))
    throw Error("AURA context reasoning UI failed: "+JSON.stringify(context));
  console.log("browser OpenCV + 329-value Python golden vector + context reasoning OK");
