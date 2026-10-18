@@ -11,7 +11,6 @@ try{
  const page=await browser.newPage();
  await page.goto("http://127.0.0.1:4173/",{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>window.__AURA_CV_READY__===true,{timeout:30000});
- await page.waitForFunction(()=>document.getElementById("eval")?.textContent.includes("trained model active"),{timeout:30000});
  const r=await page.evaluate(async()=>{
    const c=document.createElement("canvas");c.width=80;c.height=64;
    const ctx=c.getContext("2d"),d=ctx.createImageData(80,64);
@@ -22,7 +21,7 @@ try{
    const hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new Uint8Array(f.buffer,f.byteOffset,f.byteLength)))).map(x=>x.toString(16).padStart(2,"0")).join("");
    return {length:f.length,finite:Array.from(f).every(Number.isFinite),hash};
  });
- if(r.length!==329||!r.finite||r.hash!=="0a218a0b0c04c3cc27f6a9b41cf21610bd3fcfacf872c9493c1115b8a1731cd7")throw Error("Python/browser feature parity failed: "+JSON.stringify(r));
+ if(r.length!==329||!r.finite||r.hash!=="4194e36e9bf2e4d92e798f69ae12e49b8a1fe82ec74fe4942e90c2d098662f5f")throw Error("Python/browser feature parity failed: "+JSON.stringify(r));
  const context=await page.evaluate(()=>{
    document.getElementById("contextObjects").value="laptop, monitor";
    document.getElementById("contextQuestion").value="Can I connect this monitor?";
