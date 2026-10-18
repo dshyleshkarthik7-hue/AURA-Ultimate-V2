@@ -11,7 +11,7 @@ def validate_dataset(root, labels, minimum):
     for label in labels:
         files=image_files(root/label); mapping[label]=files
         if len(files)<minimum: problems.append(f"{label}: {len(files)} < {minimum}")
-    unexpected=[p.name for p in root.iterdir() if p.is_dir() and p.name not in labels]
+    unexpected=[p.name for p in root.iterdir() if p.is_dir() and p.name not in labels and p.name != "unknown"]
     if unexpected: problems.append("unexpected labels: "+", ".join(unexpected))
     if problems: raise ValueError("Dataset contract failed: "+"; ".join(problems))
     return mapping
