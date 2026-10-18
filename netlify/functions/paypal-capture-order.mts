@@ -48,10 +48,15 @@ export default async (request: Request) => {
     if (!checkResponse.ok) return Response.json({ error: "Could not verify PayPal order" }, { status: 502 });
     const order = await checkResponse.json() as any;
     const unit = order.purchase_units?.[0];
-    if (order.status === "COMPLETED") return Response.json({ status: "COMPLETED", orderId });
-    if (order.status !== "APPROVED" || unit?.reference_id !== proof.sku ||
+    if (!Array.isArray(order.purchase_units) || order.purchase_units.length !== 1 ||
+        !["APPROVED", "COMPLETED"].includes(order.status) || unit?.reference_id !== proof.sku ||
         unit?.amount?.currency_code !== "USD" || unit?.amount?.value !== item.amount) {
       return Response.json({ error: "Order is not approved or its price does not match" }, { status: 409 });
+    }
+    if (order.status === "COMPLETED") {
+      const capture = unit?.payments?.captures?.find((entry: any) => entry.status === "COMPLETED" && entry.amount?.currency_code === "USD" && entry.amount?.value === item.amount);
+      if (!capture) return Response.json({ error: "Completed order has no matching completed capture" }, { status: 409 });
+      return Response.json({ status: "COMPLETED", orderId, item: item.name, amount: item.amount, currency: "USD" });
     }
     const response = await fetch(host() + "/v2/checkout/orders/" + encodeURIComponent(orderId) + "/capture", {
       method: "POST", headers: { ...headers, "PayPal-Request-Id": "aura-capture-" + orderId.slice(0, 70) }, body: "{}" });
