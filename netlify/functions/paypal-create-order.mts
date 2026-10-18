@@ -9,10 +9,7 @@ const CATALOG: Record<string, { name: string; amount: string }> = {
 };
 
 function env(name: string): string { return Netlify.env.get(name)?.trim() ?? ""; }
-function apiHost(): string {
-  return env("PAYPAL_MODE").toLowerCase() === "live"
-    ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
-}
+function apiHost(): string { return "https://api-m.sandbox.paypal.com"; }
 async function accessToken(): Promise<string> {
   const client = env("PAYPAL_CLIENT_ID"), secret = env("PAYPAL_CLIENT_SECRET");
   if (!client || !secret) throw new Error("PayPal server credentials are not configured");
