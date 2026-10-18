@@ -7,12 +7,7 @@
   <input id="contextObjects" type="text" placeholder="e.g. laptop, monitor, USB-C hub" autocomplete="off">
   <div class="context-actions">
     <label for="contextQuestion">What do you want to know?</label>
-    <select id="contextQuestion">
-      <option value="Describe this scene">Describe this scene</option>
-      <option value="Can I connect this monitor?">Can I connect these devices?</option>
-      <option value="Will this fit my room?">Will this fit my space?</option>
-      <option value="What should I buy?">What might I need to buy?</option>
-    </select>
+    <input id="contextQuestion" list="contextQuestionExamples" value="Describe this scene" placeholder="e.g. Can I connect this monitor?"><datalist id="contextQuestionExamples"><option value="Describe this scene"></option><option value="Can I connect this monitor?"></option><option value="Will this fit my room?"></option><option value="What should I buy?"></option></datalist>
     <button id="analyzeContext" class="primary">Analyze context</button>
     <button id="useDetection">Use AURA detection</button>
     <button id="voiceQuestion" type="button">Ask by voice</button>
