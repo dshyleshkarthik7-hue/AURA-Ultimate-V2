@@ -51,7 +51,7 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
     const entered=byId("contextObjects").value.split(",").map(norm).filter(Boolean);
     const verified=state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4;
     const detected=verified?[norm(state.lastLabel)]:[];
-    return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&verified?0.9:0.7,source:label===norm(state.lastLabel)?"aura perception":"user supplied"}));
+    return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&verified?0.9:1,source:label===norm(state.lastLabel)&&verified?"aura perception":"user supplied"}));
   }
   async function analyse(){
     const sequence=++reasoningSequence;
@@ -124,7 +124,7 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
       if(window.speechSynthesis&&byId("contextSpeak")?.checked) speak(result.answer||result.summary||summary);
     }catch(error){
       if(sequence!==reasoningSequence)return;
-      byId("contextResult").textContent="Local result: "+summary+" Server reasoning is unavailable; check that the app is running with Netlify Functions.";
+      byId("contextResult").textContent="Local result ("+intent.replaceAll("_"," ")+"): "+summary+" Server reasoning is unavailable; check that the app is running with Netlify Functions.";
       if(window.speechSynthesis&&byId("contextSpeak")?.checked) speak(summary);
     }
   }
