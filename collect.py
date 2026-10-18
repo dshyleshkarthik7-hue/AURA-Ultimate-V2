@@ -3,6 +3,7 @@
 import argparse
 import time
 from pathlib import Path
+from datetime import datetime
 
 import cv2
 
@@ -25,15 +26,18 @@ def main():
     if args.label not in cfg['labels']:
         raise SystemExit('Label not in config.yaml labels.')
 
-    label_dir = Path('dataset') / args.label
-    label_dir.mkdir(parents=True, exist_ok=True)
+    label_root = Path(cfg['dataset']['root']) / args.label
+    session_name = datetime.now().strftime('%Y%m%d_%H%M%S') + f'_{time.time_ns() % 1000000:06d}'
+    label_dir = label_root / session_name
+    label_dir.mkdir(parents=True, exist_ok=False)
 
     camera = Camera(args.source, cfg['camera']['width'], cfg['camera']['height'], cfg['camera']['fps'])
     if not camera.open():
         raise SystemExit('Camera open failed')
 
-    count = count_images(label_dir)
-    print('SPACE save, A auto-burst 30, Q quit. Vary angle, distance, lighting and background.')
+    count = count_images(label_root)
+    print(f'Session: {label_dir}. SPACE saves one image, A saves a 30-frame burst, Q quits.')
+    print('Use a new collector session for each different background, lighting setup, camera position, and day.')
 
     try:
         while True:
