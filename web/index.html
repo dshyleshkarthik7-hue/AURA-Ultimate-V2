@@ -10,7 +10,7 @@
     <input id="contextQuestion" list="contextQuestionExamples" value="Describe this scene" placeholder="e.g. Can I connect this monitor?"><datalist id="contextQuestionExamples"><option value="Describe this scene"></option><option value="Can I connect this monitor?"></option><option value="Will this fit my room?"></option><option value="What should I buy?"></option></datalist>
     <button id="analyzeContext" class="primary">Analyze context</button>
     <button id="useDetection">Use AURA detection</button>
-    <button id="voiceQuestion" type="button">Ask by voice</button>
+    <button id="voiceQuestion" type="button">Ask by voice</button><label class="speak-toggle"><input id="contextSpeak" type="checkbox" checked> Speak result aloud</label>
   </div>
   <div id="contextResult" class="context-result" role="status" aria-live="polite">Enter objects and select a question to build a context graph.</div>
   <div id="contextGraph" class="context-graph" aria-label="Context graph"></div>
