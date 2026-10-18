@@ -84,3 +84,15 @@ The public client ID is returned by `/.netlify/functions/paypal-config`. The sec
 ### Privacy and accessibility
 
 AURA's camera inference remains browser-side and frames are not sent to these context/checkout endpoints. The context form supports keyboard use, live result announcements, optional speech output, and opt-in browser speech recognition. Browser speech recognition may be processed by the browser or its provider; check the provider's privacy terms before enabling it.
+
+
+## Context Intelligence + PayPal Sandbox
+
+AURA now includes a relationship-reasoning panel below the perception interface. Enter object labels, ask about compatibility/fit/purchasing, and optionally provide real measurements or exact device models. The browser sends labels and structured text—not camera frames—to the serverless context endpoint. The endpoint returns an inspectable graph, evidence gaps, recommendations, and limitations.
+
+- [Context Intelligence setup, AI configuration, and PayPal details](CONTEXT_INTELLIGENCE.md)
+- [Environment template](.env.example) — example names only; no secrets belong in Git.
+- Context reasoning works without a language-model key. Optional conversational phrasing uses server-side `OPENAI_API_KEY` and can be disabled with `AURA_AI_ENABLED=false`.
+- PayPal checkout uses a fixed illustrative USD catalogue. Keep `PAYPAL_MODE=sandbox` for testing; configure server-side credentials and `PAYPAL_WEBHOOK_ID` before testing verified webhooks.
+
+**Important:** this remains a hackathon/demo integration, not production-ready commerce. Verified webhook events are acknowledged but not persisted and do not trigger fulfilment. Durable order/event storage, idempotent processing, buyer ownership, inventory, refunds/disputes, tax/shipping, and end-to-end merchant testing remain before live payments. Generic compatibility and fit are hypotheses unless verified against exact device specifications and measurements.
