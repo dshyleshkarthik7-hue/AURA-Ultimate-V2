@@ -31,7 +31,8 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
 
 /* AURA Context Intelligence: deterministic, inspectable reasoning on the client. */
 (function initAuraContext(){
-  const byId=id=>document.getElementById(id);\n  const on=(id,event,handler)=>{const node=byId(id);if(node&&typeof node.addEventListener==="function")node.addEventListener(event,handler);};
+  const byId=id=>document.getElementById(id);
+  const on=(id,event,handler)=>{const node=byId(id);if(node&&typeof node.addEventListener==="function")node.addEventListener(event,handler);};
   const catalogue=[
     {sku:"usb-c-hub",name:"USB-C hub",price:"24.00",ports:"USB-C / HDMI / USB-A"},
     {sku:"hdmi-cable",name:"HDMI cable",price:"9.00",ports:"HDMI"},
