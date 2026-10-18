@@ -72,3 +72,5 @@ export default async (request: Request) => {
     return Response.json({ error: safe }, { status: 400 });
   }
 };
+
+export const config = { rateLimit: { action: "rate_limit", aggregateBy: "ip", windowSize: 60, windowLimit: 10 } };

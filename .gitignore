@@ -7,3 +7,10 @@ splits.json
 runs/
 models/registry/
 models/candidate.npz
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+.netlify/
+node_modules/

@@ -46,14 +46,15 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
   };
   const norm=s=>String(s||"").trim().toLowerCase().replace(/[_-]+/g," ").replace(/\s+/g," ");
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  let paypalConfig=null, paypalPromise=null, checkoutTickets=new Map();
+  let paypalConfig=null, paypalPromise=null, checkoutTickets=new Map(), reasoningSequence=0;
   function objectList(){
     const entered=byId("contextObjects").value.split(",").map(norm).filter(Boolean);
     const verified=state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4;
     const detected=verified?[norm(state.lastLabel)]:[];
-    return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&verified?0.9:0.7,source:label===norm(state.lastLabel)?"aura perception":"user supplied"}));
+    return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&verified?0.9:1,source:label===norm(state.lastLabel)&&verified?"aura perception":"user supplied"}));
   }
-  function analyse(){
+  async function analyse(){
+    const sequence=++reasoningSequence;
     const objects=objectList(), question=byId("contextQuestion").value, q=norm(question);
     const graph={objects:objects.map(x=>({...x})),relations:[]}, notes=[], missing=[], suggestions=[];
     let intent="understand_scene";
@@ -98,7 +99,34 @@ $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say(
     byId("contextGraph").innerHTML='<div class="graph-nodes">'+graph.objects.map(o=>'<span class="graph-node">'+esc(o.label)+' <small>'+Math.round(o.confidence*100)+'%</small></span>').join("")+'</div>'+
       (graph.relations.length?graph.relations.map(r=>'<div class="graph-edge">'+esc(objects.find(o=>o.id===r.subject).label)+' <strong>→ '+esc(r.predicate.replaceAll("_"," "))+' →</strong> '+esc(objects.find(o=>o.id===r.object).label)+'<small> '+Math.round(r.confidence*100)+'% · '+esc(r.evidence)+'</small></div>').join(""):'<p class="muted">No relationship is established yet. Add the relevant objects and details.</p>')+
       '<p class="muted">Hypotheses only — not physical measurements, safety certification, or a guarantee of compatibility. Demo catalogue data is illustrative.</p>';
-    if(window.speechSynthesis&&byId("contextSpeak")?.checked) speak(summary);
+    byId("contextResult").textContent="Analyzing context…";
+    const constraints={};
+    for(const [field,id] of [["available_width_cm","availableWidth"],["product_width_cm","productWidth"],["available_depth_cm","availableDepth"],["product_depth_cm","productDepth"],["budget_usd","budgetUsd"]]){
+      const raw=byId(id)?.value;
+      if(raw!==undefined&&raw!==""&&Number.isFinite(Number(raw))&&Number(raw)>=0)constraints[field]=Number(raw);
+    }
+    if(byId("deviceModel")?.value.trim())constraints.device_model=byId("deviceModel").value.trim().slice(0,120);
+    try{
+      const response=await fetch("/.netlify/functions/context-reason",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({objects,question,language:state.language||"en-IN",constraints})
+      });
+      const result=await response.json();
+      if(sequence!==reasoningSequence)return;
+      if(!response.ok)throw new Error(result.error||"Context service unavailable");
+      byId("contextResult").textContent=(result.answer||result.summary)+" "+(result.ai_used?"· AI-assisted answer":"· rule-based answer")+(result.privacy?.text_sent_to_optional_ai?" · text sent to configured AI provider":"");
+      const serverGraph=result.graph||graph, serverObjects=serverGraph.objects||[], serverRelations=serverGraph.relations||[];
+      byId("contextGraph").innerHTML='<div class="graph-nodes">'+serverObjects.map(o=>'<span class="graph-node">'+esc(o.label)+' <small>'+Math.round(Number(o.confidence||0)*100)+'%</small></span>').join("")+'</div>'+
+        (serverRelations.length?serverRelations.map(r=>'<div class="graph-edge">'+esc(serverObjects.find(o=>o.id===r.subject)?.label||r.subject)+' <strong>→ '+esc(String(r.predicate||"related").replaceAll("_"," "))+' →</strong> '+esc(serverObjects.find(o=>o.id===r.object)?.label||r.object)+'<small> '+Math.round(Number(r.confidence||0)*100)+'% · '+esc(r.evidence||"Needs verification")+' · '+esc(r.status||"inferred")+'</small></div>').join(""):'<p class="muted">No relationship can be established from the current evidence.</p>')+
+        (Array.isArray(result.recommendations)&&result.recommendations.length?'<div class="context-recommendations"><strong>Possible next steps</strong><ul>'+result.recommendations.map(x=>'<li>'+esc(x.item||"Suggestion")+': '+esc(x.reason||"Check details before acting")+(x.price_is_illustrative?' <small>· illustrative price only</small>':'')+'</li>').join("")+'</ul></div>':'')+
+        (Array.isArray(result.missing_information)&&result.missing_information.length?'<p class="muted"><strong>Evidence still needed:</strong> '+result.missing_information.map(esc).join("; ")+'</p>':'')+
+        '<p class="muted">'+(Array.isArray(result.limitations)?result.limitations.map(esc).join(" "):"Verify important details independently.")+'</p>';
+      if(window.speechSynthesis&&byId("contextSpeak")?.checked) speak(result.answer||result.summary||summary);
+    }catch(error){
+      if(sequence!==reasoningSequence)return;
+      byId("contextResult").textContent="Local result ("+intent.replaceAll("_"," ")+"): "+summary+" Server reasoning is unavailable; check that the app is running with Netlify Functions.";
+      if(window.speechSynthesis&&byId("contextSpeak")?.checked) speak(summary);
+    }
   }
   on("analyzeContext","click",analyse);
   on("useDetection","click",()=>{
