@@ -40,6 +40,7 @@ export default async (request: Request) => {
     const sku = String(body.sku ?? "");
     const item = CATALOG[sku];
     if (!item) return Response.json({ error: "Unknown demo product" }, { status: 400 });
+    if (env("AURA_CHECKOUT_SIGNING_SECRET").length < 32) throw new Error("Set AURA_CHECKOUT_SIGNING_SECRET to a random secret of at least 32 characters");
     const token = await accessToken();
     const response = await fetch(apiHost() + "/v2/checkout/orders", {
       method: "POST",
