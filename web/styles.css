@@ -29,3 +29,6 @@
 .context-panel button:focus-visible,.context-panel input:focus-visible,.context-panel select:focus-visible{outline:2px solid var(--accent,#b7f36b);outline-offset:3px}
 @media(min-width:900px){.context-actions{grid-template-columns:repeat(3,minmax(0,1fr))}.context-actions label{grid-column:1/-1}.context-actions input{grid-column:1/-1}}
 @media(max-width:600px){.context-panel{padding:.9rem}.context-actions{grid-template-columns:1fr}.commerce-catalog{grid-template-columns:1fr}.context-actions label{grid-column:auto}}
+
+.speak-toggle{display:flex!important;align-items:center;gap:.5rem;grid-column:1/-1!important;margin:.35rem 0!important}
+.speak-toggle input{width:auto!important;min-width:16px;min-height:16px}
