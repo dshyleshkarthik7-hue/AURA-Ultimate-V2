@@ -4,7 +4,7 @@ import {join,extname} from "node:path";
 import {cwd} from "node:process";
 import {chromium} from "playwright";
 const root=cwd(),mime={".html":"text/html",".js":"text/javascript",".json":"application/json",".css":"text/css",".b64":"text/plain"};
-const server=createServer((req,res)=>{try{const p=join(root,"web",decodeURIComponent(req.url==="/"?"index.html":req.url));if(!p.startsWith(join(root,"web")))throw Error("bad path");res.writeHead(200,{"content-type":mime[extname(p)]||"application/octet-stream"});res.end(readFileSync(p))}catch(e){res.writeHead(404);res.end("not found")}});
+const server=createServer((req,res)=>{try{const p=join(root,"web",decodeURIComponent(req.url==="/"?"index.html":req.url));if(!p.startsWith(join(root,"web")))throw Error("bad path");const body=readFileSync(p);res.writeHead(200,{"content-type":mime[extname(p)]||"application/octet-stream"});res.end(body)}catch(e){res.writeHead(404);res.end("not found")}});
 server.listen(4173,"127.0.0.1");
 const browser=await chromium.launch({headless:true});
 try{
@@ -21,6 +21,14 @@ try{
    const hash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new Uint8Array(f.buffer,f.byteOffset,f.byteLength)))).map(x=>x.toString(16).padStart(2,"0")).join("");
    return {length:f.length,finite:Array.from(f).every(Number.isFinite),hash};
  });
- if(r.length!==329||!r.finite||r.hash!=="0a218a0b0c04c3cc27f6a9b41cf21610bd3fcfacf872c9493c1115b8a1731cd7")throw Error("Python/browser feature parity failed: "+JSON.stringify(r));
- console.log("browser OpenCV + 329-value Python golden vector OK");
+ if(r.length!==329||!r.finite||r.hash!=="4194e36e9bf2e4d92e798f69ae12e49b8a1fe82ec74fe4942e90c2d098662f5f")throw Error("Python/browser feature parity failed: "+JSON.stringify(r));
+ const context=await page.evaluate(()=>{
+   document.getElementById("contextObjects").value="laptop, monitor";
+   document.getElementById("contextQuestion").value="Can I connect this monitor?";
+   document.getElementById("analyzeContext").click();
+   return {result:document.getElementById("contextResult").textContent,graph:document.getElementById("contextGraph").textContent};
+ });
+ if(!context.result.includes("compatibility")||!context.graph.includes("laptop")||!context.graph.includes("monitor"))
+   throw Error("AURA context reasoning UI failed: "+JSON.stringify(context));
+ console.log("browser OpenCV + 329-value Python golden vector + context reasoning OK");
 }finally{await browser.close();server.close()}

@@ -28,3 +28,150 @@ async function process(){if(!state.running)return;try{analyseFrame();let det=[];
 async function start(){if(state.running)return;try{await waitForCv();state.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});$("camera").srcObject=state.stream;state.running=true;$("systemStatus").textContent="PERCEIVING";say("scan");await loadModel();await new Promise(r=>setTimeout(r,500));frameBackground();try{state.detector=await cocoSsd.load();state.detectorReady=true}catch(e){state.detectorReady=false}process()}catch(e){$("systemStatus").textContent="CAMERA/MODEL UNAVAILABLE";$("eval").textContent=e.message;say("unknown")}}
 function reset(){state.stable=0;state.lastLabel=null;state.evidence=0;state.captures=[];state.objectBox=null;state.background=null;state.viewChanged=false;state.viewStableSince=0;state.lastSignature=null;$("evidenceBar").style.width="0";$("evidenceText").textContent="0 / 7 consistent observations";$("conditionText").textContent="adaptive";["object","colour","confidence"].forEach(id=>$(id).textContent="—");$("systemStatus").textContent=state.running?"PERCEIVING":"READY";$("guidance").textContent="Start perception and place an object in view.";say("ready")}
 $("start").onclick=start;$("capture").onclick=()=>state.running?say("scan"):say("ready");$("reset").onclick=reset;$("language").onchange=e=>{state.language=e.target.value;say("ready")};window.Module=window.Module||{};if(typeof cv!=="undefined"&&cv.Mat){state.cvReady=true;window.__AURA_CV_READY__=true}else{const previous=window.Module.onRuntimeInitialized;window.Module.onRuntimeInitialized=()=>{if(typeof previous==="function")previous();state.cvReady=true;window.__AURA_CV_READY__=true}}window.__AURA_STATE__=state;window.AURA_TEST={setConfig:c=>state.webConfig=c,featureFromCanvas,loadNpz,loadModel,sceneMask,grabCutBox,roiSignature};say("ready");
+
+/* AURA Context Intelligence: deterministic, inspectable reasoning on the client. */
+(function initAuraContext(){
+  const byId=id=>document.getElementById(id);
+  const on=(id,event,handler)=>{const node=byId(id);if(node&&typeof node.addEventListener==="function")node.addEventListener(event,handler);};
+  const catalogue=[
+    {sku:"usb-c-hub",name:"USB-C hub",price:"24.00",ports:"USB-C / HDMI / USB-A"},
+    {sku:"hdmi-cable",name:"HDMI cable",price:"9.00",ports:"HDMI"},
+    {sku:"monitor",name:"Monitor",price:"119.00",ports:"HDMI / DisplayPort"},
+    {sku:"desk",name:"Desk",price:"89.00",ports:"Measure available floor space first"},
+    {sku:"curtain",name:"Curtain",price:"25.00",ports:"Measure window width and drop first"}
+  ];
+  const demoPorts={
+    laptop:["USB-C","HDMI"], monitor:["HDMI","DisplayPort"],
+    "usb-c hub":["USB-C","HDMI","USB-A"], "hdmi cable":["HDMI"]
+  };
+  const norm=s=>String(s||"").trim().toLowerCase().replace(/[_-]+/g," ").replace(/\s+/g," ");
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  let paypalConfig=null, paypalPromise=null, checkoutTickets=new Map();
+  function objectList(){
+    const entered=byId("contextObjects").value.split(",").map(norm).filter(Boolean);
+    const verified=state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4;
+    const detected=verified?[norm(state.lastLabel)]:[];
+    return [...new Set([...detected,...entered])].filter(x=>x!=="unknown").map((label,i)=>({id:"obj-"+(i+1),label,confidence:label===norm(state.lastLabel)&&verified?0.9:0.7,source:label===norm(state.lastLabel)?"aura perception":"user supplied"}));
+  }
+  function analyse(){
+    const objects=objectList(), question=byId("contextQuestion").value, q=norm(question);
+    const graph={objects:objects.map(x=>({...x})),relations:[]}, notes=[], missing=[], suggestions=[];
+    let intent="understand_scene";
+    if(!objects.length){
+      byId("contextResult").textContent="No object labels yet. Start perception or enter one or more objects (comma-separated), then analyze again.";
+      byId("contextGraph").innerHTML=""; return;
+    }
+    const labels=objects.map(x=>x.label);
+    if(/connect|plug|port|monitor|display/.test(q)){
+      intent="compatibility";
+      const laptop=objects.find(x=>x.label==="laptop"), monitor=objects.find(x=>x.label==="monitor");
+      if(laptop&&monitor){
+        const shared=demoPorts.laptop.filter(x=>demoPorts.monitor.includes(x));
+        notes.push("The illustrative generic-device catalogue lists a shared port: "+shared.join(", ")+".");
+        graph.relations.push({subject:laptop.id,predicate:"may_connect_to",object:monitor.id,confidence:.65,evidence:"Illustrative catalogue only; exact models not checked."});
+        missing.push("Exact laptop and monitor model numbers and ports");
+      }else{
+        notes.push("The current object labels do not establish whether these devices connect.");
+        missing.push("Add a laptop and monitor label; then check exact model specifications.");
+      }
+      if(labels.includes("usb c hub")||labels.includes("usb-c hub"))suggestions.push("A USB-C hub may help only if the laptop supports video output over USB-C.");
+    }else if(/fit|room|width|measure|curtain|desk|space/.test(q)){
+      intent="fit_and_space";
+      notes.push("A camera image cannot reliably establish exact physical dimensions.");
+      missing.push("Measure the opening or available floor space and compare with verified product dimensions.");
+      if(labels.includes("curtain"))suggestions.push("Measure window width and drop; mounting style and desired fullness affect sizing.");
+      if(labels.includes("desk"))suggestions.push("Measure width, depth, clearances, and the path into the room.");
+    }else if(/buy|purchase|price|order|shop/.test(q)){
+      intent="commerce";
+      notes.push("Only consider purchase after confirming the item and requirements.");
+      missing.push("Verify exact product, budget, and product specifications before checkout.");
+      objects.forEach(o=>{const p=catalogue.find(x=>norm(x.name)===o.label);if(p)suggestions.push(p.name+": illustrative demo price $"+p.price+" USD, not a live offer.");});
+    }else{
+      notes.push("Observed object labels: "+labels.join(", ")+".");
+      const low=objects.filter(x=>x.confidence<.65);
+      if(low.length)notes.push("Verify uncertain labels: "+low.map(x=>x.label).join(", ")+".");
+      missing.push("Tell AURA what relationship or decision you want to check.");
+    }
+    const mean=objects.reduce((a,x)=>a+x.confidence,0)/objects.length;
+    const summary=[...notes,...suggestions,...(missing.length?["Still needed: "+missing.join("; ")+"."]:[])].join(" ");
+    byId("contextResult").textContent="Intent: "+intent.replaceAll("_"," ")+" · Evidence confidence: "+Math.round(mean*100)+"%. "+summary;
+    byId("contextGraph").innerHTML='<div class="graph-nodes">'+graph.objects.map(o=>'<span class="graph-node">'+esc(o.label)+' <small>'+Math.round(o.confidence*100)+'%</small></span>').join("")+'</div>'+
+      (graph.relations.length?graph.relations.map(r=>'<div class="graph-edge">'+esc(objects.find(o=>o.id===r.subject).label)+' <strong>→ '+esc(r.predicate.replaceAll("_"," "))+' →</strong> '+esc(objects.find(o=>o.id===r.object).label)+'<small> '+Math.round(r.confidence*100)+'% · '+esc(r.evidence)+'</small></div>').join(""):'<p class="muted">No relationship is established yet. Add the relevant objects and details.</p>')+
+      '<p class="muted">Hypotheses only — not physical measurements, safety certification, or a guarantee of compatibility. Demo catalogue data is illustrative.</p>';
+    if(window.speechSynthesis&&byId("contextSpeak")?.checked) speak(summary);
+  }
+  on("analyzeContext","click",analyse);
+  on("useDetection","click",()=>{
+    if(state.lastLabel&&state.lastLabel!=="unknown"&&state.evidence>=7&&state.captures.length>=4){
+      const current=byId("contextObjects").value.trim();
+      byId("contextObjects").value=[current,state.lastLabel.replaceAll("_"," ")].filter(Boolean).join(", ");
+      byId("contextQuestion").focus();
+    }else byId("contextResult").textContent="AURA has not produced an object label yet. Start perception or enter the label manually.";
+  });
+  on("voiceQuestion","click",()=>{
+    const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!Recognition){byId("contextResult").textContent="Speech recognition is not available in this browser. You can type your question instead.";return;}
+    const rec=new Recognition();rec.lang=state.language||"en-IN";rec.interimResults=false;rec.maxAlternatives=1;
+    byId("contextResult").textContent="Listening… Your browser may process voice through its speech provider.";
+    rec.onresult=e=>{const text=e.results?.[0]?.[0]?.transcript||"";byId("contextQuestion").value=text;analyse();};
+    rec.onerror=()=>{byId("contextResult").textContent="Voice input failed or was blocked. Type your question instead.";};
+    try{rec.start();}catch(e){byId("contextResult").textContent="Voice input could not start. Type your question instead.";}
+  });
+  function renderCatalog(){
+    const host=byId("commerceCatalog");
+    host.innerHTML=catalogue.map(p=>'<article class="commerce-card"><div><strong>'+esc(p.name)+'</strong><p>$'+esc(p.price)+' USD <small>· demo price</small></p><small>'+esc(p.ports)+'</small></div><button type="button" data-checkout="'+esc(p.sku)+'">Set up PayPal</button><div class="paypal-target" id="paypal-'+esc(p.sku)+'"></div></article>').join("");
+    if(typeof host.querySelectorAll==="function")host.querySelectorAll("[data-checkout]").forEach(btn=>btn.addEventListener("click",()=>setupButtons(btn.dataset.checkout)));
+  }
+  async function loadPayPal(){
+    if(paypalPromise)return paypalPromise;
+    paypalPromise=(async()=>{
+      const response=await fetch("/.netlify/functions/paypal-config",{cache:"no-store"});
+      if(!response.ok)throw new Error("PayPal configuration endpoint unavailable");
+      paypalConfig=await response.json();
+      if(!paypalConfig.enabled||!paypalConfig.clientId)throw new Error("PayPal Sandbox is not configured by the site owner");
+      if(!window.paypal){
+        const url=new URL("https://www.paypal.com/sdk/js");
+        url.searchParams.set("client-id",paypalConfig.clientId);url.searchParams.set("currency","USD");url.searchParams.set("intent","capture");
+        const script=document.createElement("script");script.src=url.toString();script.async=true;
+        document.head.appendChild(script);
+        await new Promise((resolve,reject)=>{script.onload=resolve;script.onerror=()=>reject(new Error("PayPal SDK failed to load"));});
+      }
+      if(!window.paypal?.Buttons)throw new Error("PayPal SDK did not initialize");
+      return window.paypal;
+    })();
+    return paypalPromise;
+  }
+  async function setupButtons(sku){
+    const target=byId("paypal-"+sku);if(!target)return;
+    target.textContent="Preparing secure checkout…";
+    try{
+      const sdk=await loadPayPal();target.textContent="";
+      await sdk.Buttons({
+        style:{layout:"vertical",shape:"rect",label:"paypal"},
+        createOrder:async()=>{
+          const response=await fetch("/.netlify/functions/paypal-create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sku})});
+          const data=await response.json();if(!response.ok)throw new Error(data.error||"Could not create order");
+          checkoutTickets.set(data.id,data.ticket);return data.id;
+        },
+        onApprove:async data=>{
+          target.textContent="Verifying and capturing payment…";
+          const ticket=checkoutTickets.get(data.orderID);
+          if(!ticket)throw new Error("This checkout session is missing its verification ticket. Start again.");
+          const response=await fetch("/.netlify/functions/paypal-capture-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({orderId:data.orderID,ticket})});
+          const result=await response.json();
+          if(!response.ok)throw new Error(result.error||"Payment was not completed");
+          target.textContent="Payment completed in PayPal "+(paypalConfig.mode==="live"?"Live":"Sandbox")+". Order "+result.orderId;
+          byId("commerceStatus").textContent="PayPal returned a completed capture. Demo products are not fulfilled automatically.";
+          checkoutTickets.delete(data.orderID);
+        },
+        onCancel:()=>{target.textContent="Checkout cancelled. No capture was requested.";},
+        onError:err=>{target.textContent="Checkout error: "+(err?.message||"PayPal error");}
+      }).render(target);
+    }catch(e){target.textContent=e instanceof Error?e.message:"Checkout unavailable";byId("commerceStatus").textContent="PayPal unavailable. The site owner must configure the server environment before checkout can work.";}
+  }
+  renderCatalog();
+  fetch("/.netlify/functions/paypal-config",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(c=>{
+    paypalConfig=c;
+    byId("commerceStatus").textContent=c.enabled?"PayPal "+(c.mode==="live"?"Live":"Sandbox")+" client ID found. Choose a demo product to load the PayPal button.":"PayPal is not configured yet. Set server-side credentials; no payment can be made until then.";
+  }).catch(()=>{byId("commerceStatus").textContent="PayPal checkout requires Netlify Functions. When hosted locally, use Netlify CLI (netlify dev).";});
+})();

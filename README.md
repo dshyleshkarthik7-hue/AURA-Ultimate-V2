@@ -46,3 +46,41 @@ For the browser, seven-frame temporal stability is not treated as seven independ
 
 ## Browser limitations
 The optional COCO-SSD person detector is loaded from a CDN, so the browser demo is network-dependent when that detector is enabled. Camera, browser CPU/memory, and detector latency must be measured on representative hardware before deployment claims. Production claims additionally require independently collected sessions and human-verified unknown labels.
+
+
+## Context Intelligence + PayPal Sandbox
+
+The feature branch `feature/context-intelligence-paypal` adds a context graph and an optional checkout demo.
+
+### Context reasoning
+
+- The browser UI now has an **AURA / Context Intelligence** panel under the existing perception UI.
+- Enter comma-separated labels such as `laptop, monitor`, then ask a question about connections, fit, or purchasing. The current stable AURA detection can be added with **Use AURA detection**.
+- The panel presents object nodes, explicitly tentative relations, confidence, and missing evidence. Generic port information and sample prices are illustrative; this does not certify fit, safety, or device compatibility.
+- Python integration lives in `aura/context_intelligence.py` and `aura/context_adapter.py`. The adapter accepts a result from `PerceptionEngine.predict()` and refuses to treat an unstable prediction as a confirmed object.
+
+### Local web preview
+
+Because the payment endpoints are Netlify Functions, use Netlify CLI to preview the web app and functions together:
+
+1. Install Node.js and Netlify CLI.
+2. From the repository root run `npm install -g netlify-cli`.
+3. Run `netlify dev` and open the local URL printed by the CLI.
+4. Without PayPal environment variables, context reasoning still works; checkout remains disabled.
+
+### PayPal Sandbox configuration
+
+Configure these variables in the Netlify site settings with **Functions** scope, then redeploy:
+
+- `PAYPAL_MODE=sandbox`
+- `PAYPAL_CLIENT_ID=...`
+- `PAYPAL_CLIENT_SECRET=...`
+- `AURA_CHECKOUT_SIGNING_SECRET=...` (random secret, at least 32 characters)
+
+The public client ID is returned by `/.netlify/functions/paypal-config`. The secret and signing secret stay server-side. Checkout prices come from the server's fixed demo allowlist; the browser cannot set a price. On approval, the server verifies the signed short-lived ticket, fetches the PayPal order, validates its status, item, currency and amount, then captures it. The capture path checks completed captures for idempotent retries.
+
+**Do not use real payments for the hackathon demo.** Keep Sandbox enabled. This demo has no fulfilment, shipping/tax, persistent order ledger, webhook verification, account/session ownership, rate limiting, or production merchant onboarding. Before live commerce, those controls and end-to-end testing are required. The listed USD prices are test fixtures, not live offers. No PayPal credentials or payment results are included in this repository.
+
+### Privacy and accessibility
+
+AURA's camera inference remains browser-side and frames are not sent to these context/checkout endpoints. The context form supports keyboard use, live result announcements, optional speech output, and opt-in browser speech recognition. Browser speech recognition may be processed by the browser or its provider; check the provider's privacy terms before enabling it.
